@@ -7,7 +7,7 @@ module.exports = {
 	entry: {
 		index: ['./src/index.js']
 	},
-
+	devtool: 'source-map',
 	output: {
 		path: path.resolve(__dirname, 'dist'),
 		filename: '[name].js'
@@ -44,22 +44,22 @@ module.exports = {
 		compress: true,
 		port: 9999,
 		proxy: [
-			{
-				context: ["/www.ecb.europa.eu/"],
-				target: 'https://www.ecb.europa.eu',
-				changeOrigin: true,
-				pathRewrite: {
-					'/www\\.ecb\\.europa\\.eu' : ''
-				}
-			}
 			// {
-			// 	context: ["/xml.meteoservice.ru/"],
-			// 	target: 'https://xml.meteoservice.ru',
+			// 	context: ["/www.ecb.europa.eu/"],
+			// 	target: 'https://www.ecb.europa.eu',
 			// 	changeOrigin: true,
 			// 	pathRewrite: {
-			// 		'/xml\\.meteoservice\\.ru' : ''
-			// 	},
+			// 		'/www\\.ecb\\.europa\\.eu' : ''
+			// 	}
 			// }
+			{
+				context: ["/xml.meteoservice.ru/"],
+				target: 'https://xml.meteoservice.ru',
+				changeOrigin: true,
+				pathRewrite: {
+					'/xml\\.meteoservice\\.ru' : ''
+				},
+			}
 		]
 	}
 };

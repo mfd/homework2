@@ -1,77 +1,107 @@
 import "babel-polyfill";
 import Chart from "chart.js";
+import swal from 'sweetalert';
 
-const currencyURL = "www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
-// const meteoURL = "/xml.meteoservice.ru/export/gismeteo/point/140.xml";
+/* fonts */
+import WebFont from 'webfontloader';
 
-async function loadCurrency() {
-  const response = await fetch(currencyURL);
-  const xmlTest = await response.text();
-  const parser = new DOMParser();
-  const currencyData = parser.parseFromString(xmlTest, "text/xml");
-  // <Cube currency="USD" rate="1.1321" />
-  const rates = currencyData.querySelectorAll("Cube[currency][rate]");
-  const result = Object.create(null);
-  for (let i = 0; i < rates.length; i++) {
-    const rateTag = rates.item(i);
-    const rate = rateTag.getAttribute("rate");
-    const currency = rateTag.getAttribute("currency");
-    result[currency] = rate;
-  }
-  result["EUR"] = 1;
-  // result["RANDOM"] = 1 + Math.random();
-  return result;
-}
-
-function normalizeDataByCurrency(data, currency) {
-  const result = Object.create(null);
-  const value = data[currency];
-  for (const key of Object.keys(data)) {
-    result[key] = value / data[key];
-  }
-  return result;
-}
-
-const buttonBuild = document.getElementById("btn");
-const canvasCtx = document.getElementById("out").getContext("2d");
-buttonBuild.addEventListener("click", async function() {
-  const currencyData = await loadCurrency();
-  const normalData = normalizeDataByCurrency(currencyData, "RUB");
-  const keys = Object.keys(normalData).sort((k1, k2) =>
-    compare(normalData[k1], normalData[k2])
-  );
-  const plotData = keys.map(key => normalData[key]);
-
-  const chartConfig = {
-    type: "line",
-
-    data: {
-      labels: keys,
-      datasets: [
-        {
-          label: "Стоимость валюты в рублях",
-          backgroundColor: "rgb(255, 20, 20)",
-          borderColor: "rgb(180, 0, 0)",
-          data: plotData
-        }
-      ]
-    }
-  };
-
-  if (window.chart) {
-    chart.data.labels = chartConfig.data.labels;
-    chart.data.datasets[0].data = chartConfig.data.datasets[0].data;
-    chart.update({
-      duration: 800,
-      easing: "easeOutBounce"
-    });
-  } else {
-    window.chart = new Chart(canvasCtx, chartConfig);
+WebFont.load({
+  google: {
+    families: ['Roboto:300:cyrillic']
   }
 });
 
-function compare(a, b) {
-  if (a > b) return 1;
-  if (a < b) return -1;
-  return 0;
+// const currencyURL = "www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
+const meteoURL = "/xml.meteoservice.ru/export/gismeteo/point/140.xml";
+
+async function loadWeather(url) {
+  const response = await fetch(url);
+  const xmlTest = await response.text();
+  const parser = new DOMParser();
+  const currencyData = parser.parseFromString(xmlTest, "text/xml");
+
+  const forecast = currencyData.querySelectorAll("FORECAST[hour]");
+
+  return forecast;
 }
+
+const buttonBuild = document.getElementById("btn");
+
+const canvasCtx = document.getElementById("out").getContext("2d");
+
+buttonBuild.addEventListener("click", async function() {
+  //Получаем данные
+  const forecast = await loadWeather(meteoURL);
+
+  //Сюда будем пулять нужные данные для графика
+  const data = [];
+
+  // парсим XML объект по нужным атрибутам
+  // Описание API
+  // https://www.meteoservice.ru/content/export.html
+  // TEMPERATURE - температура воздуха, в градусах Цельсия
+  // HEAT - комфорт - температура воздуха по ощущению одетого по сезону человека, выходящего на улицу
+
+  if (forecast.length > 0) {
+    forecast.forEach(el => {
+      let tTag = el.querySelector('TEMPERATURE');
+      let hTag = el.querySelector('HEAT');
+      // Cчитаем среднее от мин/макс
+      let temper = (parseInt(tTag.getAttribute("min")) + parseInt(tTag.getAttribute("max"))) / 2;
+      let heat = (parseInt(hTag.getAttribute("min")) + parseInt(hTag.getAttribute("max"))) / 2;
+      // Время - часы
+      let time = parseInt(el.getAttribute("hour"));
+      // Дата дд/мм/гггг
+      let date = `${el.getAttribute("day")}/${el.getAttribute("month")}/${el.getAttribute("year")}`
+
+      data.push({
+        'time': time,
+        'date': date,
+        'temp': temper,
+        'heat': heat
+      });
+    });
+
+    // сортируем по времени
+    //data.sort((a, b) => a.time - b.time);
+    console.table(data);
+    //debugger;
+    const chartConfig = {
+      type: "line",
+
+      data: {
+        labels: data.map(key => `${key.time}:00 ${key.date}`),
+        datasets: [
+          {
+            label: "Температура по ощущениям",
+            backgroundColor: "rgb(139, 195, 74)",
+            borderColor: "rgb(139, 195, 74)",
+            data: data.map(key => key.heat)
+          },
+          {
+            label: "Температура",
+            backgroundColor: "rgb(244, 67, 54)",
+            borderColor: "rgb(180, 0, 0)",
+            data: data.map(key => key.temp)
+          }
+
+        ]
+      }
+    };
+
+    if (window.chart) {
+      chart.data.labels = chartConfig.data.labels;
+      chart.data.datasets[0].data = chartConfig.data.datasets[0].data;
+      chart.update({
+        duration: 800,
+        easing: "easeOutBounce"
+      });
+    } else {
+      window.chart = new Chart(canvasCtx, chartConfig);
+    }
+  } else {
+    swal("Упс!", "Что-то пошло не так! Проверьте консоль", "error");
+  }
+});
+
+

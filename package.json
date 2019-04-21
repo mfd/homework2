@@ -6,6 +6,8 @@
   "dependencies": {
     "babel-polyfill": "^6.26.0",
     "chart.js": "^2.8.0",
+    "sweetalert": "^2.1.2",
+    "webfontloader": "^1.6.28",
     "webpack": "^4.30.0",
     "webpack-dev-server": "^3.3.1"
   },
